@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { Json } from '@/integrations/supabase/types';
 
 type ResultType = {
   quiz: {
@@ -17,7 +18,7 @@ type ResultType = {
     };
   };
   score: number | null;
-  answers: Record<string, string>;
+  answers: Json; // Updated from Record<string, string> to Json to match Supabase type
   submitted_at: string;
   total_questions: number;
 };
@@ -68,8 +69,8 @@ const Results = () => {
           .filter(r => r.quiz.results_published)
           .map(r => ({
             ...r,
-            total_questions: Object.keys(r.answers).length
-          }));
+            total_questions: r.answers ? (typeof r.answers === 'object' ? Object.keys(r.answers).length : 0) : 0
+          })) as ResultType[];
         
         setResults(publishedResults);
         

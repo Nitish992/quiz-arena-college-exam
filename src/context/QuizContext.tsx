@@ -2,11 +2,12 @@
 import React, { createContext, useContext, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
+import { Json } from '@/integrations/supabase/types';
 
 type Question = {
   id: string;
   question: string;
-  options: string[];
+  options: string[]; // This should be a string array
   correct_answer?: string;
 };
 
@@ -63,11 +64,31 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       // Format questions
-      const formattedQuestions = data.map(item => ({
-        id: item.question.id,
-        question: item.question.question,
-        options: item.question.options
-      }));
+      const formattedQuestions = data.map(item => {
+        // Handle options as Json from Supabase and convert to string[]
+        let parsedOptions: string[] = [];
+        if (item.question.options) {
+          // Handle different possible formats from Supabase
+          if (typeof item.question.options === 'string') {
+            try {
+              parsedOptions = JSON.parse(item.question.options);
+            } catch (e) {
+              console.error('Error parsing options:', e);
+            }
+          } else if (Array.isArray(item.question.options)) {
+            parsedOptions = item.question.options as string[];
+          } else if (typeof item.question.options === 'object') {
+            // It might be a JSONB object with values as options
+            parsedOptions = Object.values(item.question.options as object) as string[];
+          }
+        }
+        
+        return {
+          id: item.question.id,
+          question: item.question.question,
+          options: parsedOptions
+        };
+      });
       
       setQuizQuestions(formattedQuestions);
       setTimeRemaining(timeLimit * 60); // Convert minutes to seconds

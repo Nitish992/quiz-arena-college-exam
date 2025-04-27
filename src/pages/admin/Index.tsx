@@ -7,10 +7,10 @@ import UserUpload from '@/components/admin/UserUpload';
 import BatchUpdate from '@/components/admin/BatchUpdate';
 
 const AdminDashboard = () => {
-  const { user, logout } = useAuth();
+  const { profile, logout } = useAuth();
   const [activeTab, setActiveTab] = useState("users");
   
-  if (!user) return null;
+  if (!profile) return null;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -19,7 +19,7 @@ const AdminDashboard = () => {
           <h1 className="text-2xl font-bold text-quiz-primary">College Quiz Arena</h1>
           <div className="flex items-center space-x-4">
             <span className="text-sm">
-              Admin: {user.name} ({user.roll_number})
+              Admin: {profile.name} ({profile.roll_number})
             </span>
             <Button variant="outline" size="sm" onClick={logout}>Logout</Button>
           </div>

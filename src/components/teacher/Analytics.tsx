@@ -17,11 +17,9 @@ type Quiz = {
 
 type StudentResponse = {
   id: string;
-  user: {
-    id: string;
-    name: string;
-    roll_number: string;
-  };
+  user_id: string;
+  user_name?: string;
+  user_roll_number?: string;
   score: number | null;
   submitted_at: string;
   quiz_id: string;
@@ -119,30 +117,35 @@ const Analytics = () => {
       setLoadingResponses(true);
       
       try {
-        // Fetch quiz responses with user info
-        const { data, error } = await supabase
+        // Fetch quiz responses
+        const { data: responsesData, error: responsesError } = await supabase
           .from('quiz_responses')
           .select(`
             id,
+            quiz_id,
+            user_id,
             score,
             answers,
-            submitted_at,
-            quiz_id,
-            user:user_id (
-              id,
-              name:profiles!inner(name),
-              roll_number:profiles!inner(roll_number)
-            )
+            submitted_at
           `)
           .eq('quiz_id', selectedQuiz);
         
-        if (error) throw error;
+        if (responsesError) throw responsesError;
         
-        if (!data) {
+        if (!responsesData) {
           setResponses([]);
           setLoadingResponses(false);
           return;
         }
+        
+        // Fetch user profiles for these responses
+        const userIds = responsesData.map(r => r.user_id);
+        const { data: usersData, error: usersError } = await supabase
+          .from('profiles')
+          .select('id, name, roll_number')
+          .in('id', userIds);
+        
+        if (usersError) throw usersError;
         
         // Fetch questions for this quiz
         const { data: questionsData, error: questionsError } = await supabase
@@ -156,20 +159,22 @@ const Analytics = () => {
         
         const totalQuestions = questionsData?.length || 0;
         
-        // Format responses
-        const formattedResponses = data.map(r => ({
-          id: r.id,
-          user: {
-            id: r.user.id,
-            name: r.user.name,
-            roll_number: r.user.roll_number
-          },
-          score: r.score,
-          submitted_at: r.submitted_at,
-          quiz_id: r.quiz_id,
-          answers: r.answers,
-          total_questions: totalQuestions
-        }));
+        // Format responses with user information
+        const formattedResponses = responsesData.map(r => {
+          const userProfile = usersData?.find(u => u.id === r.user_id);
+          
+          return {
+            id: r.id,
+            user_id: r.user_id,
+            user_name: userProfile?.name || 'Unknown User',
+            user_roll_number: userProfile?.roll_number || 'Unknown ID',
+            score: r.score,
+            submitted_at: r.submitted_at,
+            quiz_id: r.quiz_id,
+            answers: r.answers,
+            total_questions: totalQuestions
+          };
+        });
         
         setResponses(formattedResponses);
         
@@ -411,8 +416,8 @@ const Analytics = () => {
                       
                     return (
                       <TableRow key={response.id}>
-                        <TableCell>{response.user.roll_number}</TableCell>
-                        <TableCell>{response.user.name}</TableCell>
+                        <TableCell>{response.user_roll_number}</TableCell>
+                        <TableCell>{response.user_name}</TableCell>
                         <TableCell>
                           {response.score !== null 
                             ? `${response.score}/${response.total_questions}` 
