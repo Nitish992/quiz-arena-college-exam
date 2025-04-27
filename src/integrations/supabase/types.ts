@@ -153,6 +153,39 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          batch: string | null
+          created_at: string
+          id: string
+          name: string
+          role: string
+          roll_number: string | null
+          semester: string | null
+          updated_at: string
+        }
+        Insert: {
+          batch?: string | null
+          created_at?: string
+          id: string
+          name: string
+          role: string
+          roll_number?: string | null
+          semester?: string | null
+          updated_at?: string
+        }
+        Update: {
+          batch?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          role?: string
+          roll_number?: string | null
+          semester?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       projects: {
         Row: {
           created_at: string | null
@@ -192,6 +225,168 @@ export type Database = {
         }
         Relationships: []
       }
+      questions: {
+        Row: {
+          correct_answer: string
+          created_at: string
+          id: string
+          options: Json
+          question: string
+          semester: string
+          subject_id: string
+          updated_at: string
+        }
+        Insert: {
+          correct_answer: string
+          created_at?: string
+          id?: string
+          options: Json
+          question: string
+          semester: string
+          subject_id: string
+          updated_at?: string
+        }
+        Update: {
+          correct_answer?: string
+          created_at?: string
+          id?: string
+          options?: Json
+          question?: string
+          semester?: string
+          subject_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "questions_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_questions: {
+        Row: {
+          created_at: string
+          id: string
+          question_id: string
+          quiz_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          question_id: string
+          quiz_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          question_id?: string
+          quiz_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_questions_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_questions_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_responses: {
+        Row: {
+          answers: Json
+          id: string
+          quiz_id: string
+          score: number | null
+          submitted_at: string
+          user_id: string
+        }
+        Insert: {
+          answers: Json
+          id?: string
+          quiz_id: string
+          score?: number | null
+          submitted_at?: string
+          user_id: string
+        }
+        Update: {
+          answers?: Json
+          id?: string
+          quiz_id?: string
+          score?: number | null
+          submitted_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_responses_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quizzes: {
+        Row: {
+          created_at: string
+          end_time: string
+          id: string
+          instructions: string | null
+          name: string
+          results_published: boolean
+          semester: string
+          start_time: string
+          subject_id: string
+          time_limit: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          end_time: string
+          id?: string
+          instructions?: string | null
+          name: string
+          results_published?: boolean
+          semester: string
+          start_time: string
+          subject_id: string
+          time_limit: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          end_time?: string
+          id?: string
+          instructions?: string | null
+          name?: string
+          results_published?: boolean
+          semester?: string
+          start_time?: string
+          subject_id?: string
+          time_limit?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quizzes_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       skills: {
         Row: {
           category: string
@@ -216,6 +411,30 @@ export type Database = {
           name?: string
           order_index?: number
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      subjects: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          semester: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          semester: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          semester?: string
+          updated_at?: string
         }
         Relationships: []
       }

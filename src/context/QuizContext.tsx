@@ -1,11 +1,13 @@
 
 import React, { createContext, useContext, useState } from 'react';
-import { questions } from '../lib/dummyData';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from './AuthContext';
 
 type Question = {
-  _id: string;
+  id: string;
   question: string;
   options: string[];
+  correct_answer?: string;
 };
 
 interface QuizContextType {
@@ -26,6 +28,7 @@ interface QuizContextType {
 const QuizContext = createContext<QuizContextType | undefined>(undefined);
 
 export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { profile } = useAuth();
   const [quizId, setQuizId] = useState<string | null>(null);
   const [quizQuestions, setQuizQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -38,17 +41,44 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     setQuizId(quizId);
     
-    // Simulate API call to get questions for this quiz
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // In a real app, we'd fetch questions using the quiz ID
-    // For this demo, we'll just use our dummy questions
-    setQuizQuestions(questions);
-    setTimeRemaining(timeLimit * 60); // Convert minutes to seconds
-    setCurrentQuestionIndex(0);
-    setAnswers({});
-    setIsQuizComplete(false);
-    setIsLoading(false);
+    try {
+      // Fetch questions for this quiz
+      const { data, error } = await supabase
+        .from('quiz_questions')
+        .select(`
+          question:question_id (
+            id,
+            question,
+            options
+          )
+        `)
+        .eq('quiz_id', quizId);
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (!data || data.length === 0) {
+        throw new Error('No questions found for this quiz');
+      }
+      
+      // Format questions
+      const formattedQuestions = data.map(item => ({
+        id: item.question.id,
+        question: item.question.question,
+        options: item.question.options
+      }));
+      
+      setQuizQuestions(formattedQuestions);
+      setTimeRemaining(timeLimit * 60); // Convert minutes to seconds
+      setCurrentQuestionIndex(0);
+      setAnswers({});
+      setIsQuizComplete(false);
+    } catch (error) {
+      console.error('Error starting quiz:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const setCurrentQuestion = (index: number) => {
@@ -67,25 +97,41 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const submitQuiz = async (): Promise<{ score: number, total: number }> => {
     setIsLoading(true);
     
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1200));
-    
-    // Calculate score (for demo purposes)
-    let score = 0;
-    quizQuestions.forEach(q => {
-      const correctAnswer = questions.find(question => question._id === q._id)?.correct_answer;
-      if (correctAnswer && answers[q._id] === correctAnswer) {
-        score++;
+    try {
+      if (!profile || !quizId) {
+        throw new Error('User or quiz information missing');
       }
-    });
-    
-    setIsQuizComplete(true);
-    setIsLoading(false);
-    
-    return {
-      score,
-      total: quizQuestions.length
-    };
+      
+      // Submit quiz responses to Supabase
+      const { error } = await supabase
+        .from('quiz_responses')
+        .insert({
+          quiz_id: quizId,
+          user_id: profile.id,
+          answers: answers,
+          score: null // Score will be set by teacher later
+        });
+      
+      if (error) {
+        throw error;
+      }
+      
+      setIsQuizComplete(true);
+      
+      // Return dummy score since we're not calculating it automatically
+      return {
+        score: 0,
+        total: quizQuestions.length
+      };
+    } catch (error) {
+      console.error('Error submitting quiz:', error);
+      return {
+        score: 0,
+        total: quizQuestions.length
+      };
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   const updateTimeRemaining = (time: number) => {

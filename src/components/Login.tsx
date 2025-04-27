@@ -89,7 +89,7 @@ const Login = () => {
               required
             />
             <p className="text-xs text-gray-500">
-              For demo: Use 2000-01-15 for CS23A001, 2000-03-22 for CS23A002, any date for prof123 or admin001
+              For demo: Use any date for prof123, admin001, or CS23A001-CS23A005
             </p>
           </div>
           <Button

@@ -9,10 +9,10 @@ import QuizList from '@/components/teacher/QuizList';
 import Analytics from '@/components/teacher/Analytics';
 
 const TeacherDashboard = () => {
-  const { user, logout } = useAuth();
+  const { profile, logout } = useAuth();
   const [activeTab, setActiveTab] = useState("quizzes");
   
-  if (!user) return null;
+  if (!profile) return null;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -21,7 +21,7 @@ const TeacherDashboard = () => {
           <h1 className="text-2xl font-bold text-quiz-primary">College Quiz Arena</h1>
           <div className="flex items-center space-x-4">
             <span className="text-sm hidden md:inline">
-              Faculty: {user.name} ({user.roll_number})
+              Faculty: {profile.name} ({profile.roll_number})
             </span>
             <Button variant="outline" size="sm" onClick={logout}>Logout</Button>
           </div>

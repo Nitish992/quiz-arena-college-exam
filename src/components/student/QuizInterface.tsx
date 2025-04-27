@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { useNavigate } from 'react-router-dom';
 
 const QuizInterface = () => {
   const { 
@@ -15,13 +16,14 @@ const QuizInterface = () => {
     setCurrentQuestion, 
     updateAnswer,
     submitQuiz,
-    updateTimeRemaining
+    updateTimeRemaining,
+    isLoading,
+    isQuizComplete
   } = useQuiz();
   
-  const [showResults, setShowResults] = useState(false);
-  const [quizResults, setQuizResults] = useState({ score: 0, total: 0 });
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   // Format time as MM:SS
   const formatTime = (seconds: number): string => {
@@ -32,13 +34,13 @@ const QuizInterface = () => {
   
   // Timer countdown
   useEffect(() => {
-    if (timeRemaining > 0 && !showResults) {
+    if (timeRemaining > 0 && !isQuizComplete && !isLoading) {
       const timer = setTimeout(() => {
         updateTimeRemaining(timeRemaining - 1);
       }, 1000);
       
       return () => clearTimeout(timer);
-    } else if (timeRemaining === 0 && !showResults) {
+    } else if (timeRemaining === 0 && !isQuizComplete && !isLoading) {
       // Auto-submit when time expires
       handleSubmit();
       toast({
@@ -47,18 +49,18 @@ const QuizInterface = () => {
         variant: "destructive",
       });
     }
-  }, [timeRemaining, showResults]);
+  }, [timeRemaining, isQuizComplete, isLoading, updateTimeRemaining, toast]);
 
   const currentQuestion = quizQuestions[currentQuestionIndex];
   
   const handleOptionSelect = (option: string) => {
-    if (!showResults && currentQuestion) {
-      updateAnswer(currentQuestion._id, option);
+    if (!isQuizComplete && currentQuestion) {
+      updateAnswer(currentQuestion.id, option);
     }
   };
   
   const isOptionSelected = (option: string): boolean => {
-    return currentQuestion && answers[currentQuestion._id] === option;
+    return currentQuestion && answers[currentQuestion.id] === option;
   };
 
   const handleNext = () => {
@@ -79,11 +81,11 @@ const QuizInterface = () => {
 
   const isQuestionAttempted = (index: number): boolean => {
     const question = quizQuestions[index];
-    return question && answers[question._id] !== undefined;
+    return question && answers[question.id] !== undefined;
   };
 
   const handleSubmitClick = () => {
-    const unansweredCount = quizQuestions.filter(q => !answers[q._id]).length;
+    const unansweredCount = quizQuestions.filter(q => !answers[q.id]).length;
     
     if (unansweredCount > 0) {
       toast({
@@ -98,31 +100,36 @@ const QuizInterface = () => {
 
   const handleSubmit = async () => {
     setShowSubmitDialog(false);
-    const result = await submitQuiz();
-    setQuizResults(result);
-    setShowResults(true);
+    await submitQuiz();
+    navigate('/student');
+    toast({
+      title: "Quiz Submitted",
+      description: "Your quiz has been submitted successfully. Results will be available once the teacher has published them.",
+    });
   };
 
-  if (!currentQuestion) {
-    return <div>Loading questions...</div>;
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        <p className="ml-2">Loading questions...</p>
+      </div>
+    );
   }
 
-  if (showResults) {
+  if (!currentQuestion) {
     return (
       <div className="p-8 max-w-4xl mx-auto">
         <Card className="bg-white shadow-lg rounded-lg p-8">
-          <h2 className="text-3xl font-bold mb-6 text-center text-quiz-primary">Quiz Complete!</h2>
-          <div className="text-center mb-8">
-            <div className="text-5xl font-bold mb-4">
-              {quizResults.score} / {quizResults.total}
-            </div>
-            <p className="text-lg text-gray-700">
-              You answered {quizResults.score} out of {quizResults.total} questions correctly.
-            </p>
-          </div>
-          
+          <h2 className="text-2xl font-bold mb-6 text-center text-red-500">Error</h2>
+          <p className="text-center mb-8">
+            No questions found for this quiz. Please contact your instructor.
+          </p>
           <div className="flex justify-center">
-            <Button className="bg-quiz-primary hover:bg-quiz-secondary" onClick={() => window.location.href = '/student'}>
+            <Button 
+              className="bg-quiz-primary hover:bg-quiz-secondary" 
+              onClick={() => navigate('/student')}
+            >
               Return to Dashboard
             </Button>
           </div>
@@ -137,7 +144,7 @@ const QuizInterface = () => {
         <div className="font-semibold">
           Question {currentQuestionIndex + 1} of {quizQuestions.length}
         </div>
-        <div className={`font-bold text-xl ${timeRemaining < 60 ? 'timer-expiring' : ''}`}>
+        <div className={`font-bold text-xl ${timeRemaining < 60 ? 'text-red-500 animate-pulse' : ''}`}>
           {formatTime(timeRemaining)}
         </div>
       </div>
@@ -152,13 +159,19 @@ const QuizInterface = () => {
                 {currentQuestion.options.map((option, index) => (
                   <div
                     key={index}
-                    className={`quiz-option ${isOptionSelected(String.fromCharCode(65 + index)) ? 'quiz-option-selected' : ''}`}
+                    className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                      isOptionSelected(String.fromCharCode(65 + index)) 
+                        ? 'border-blue-500 bg-blue-50' 
+                        : 'border-gray-200 hover:border-blue-200 hover:bg-gray-50'
+                    }`}
                     onClick={() => handleOptionSelect(String.fromCharCode(65 + index))}
                   >
-                    <span className="w-8 h-8 rounded-full bg-quiz-light flex items-center justify-center mr-3 font-semibold">
-                      {String.fromCharCode(65 + index)}
-                    </span>
-                    {option}
+                    <div className="flex items-center">
+                      <span className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center mr-3 font-semibold">
+                        {String.fromCharCode(65 + index)}
+                      </span>
+                      {option}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -189,9 +202,11 @@ const QuizInterface = () => {
                   <button
                     key={index}
                     onClick={() => handleJumpToQuestion(index)}
-                    className={`question-nav-button ${
-                      isQuestionAttempted(index) ? 'question-attempted' : 'question-unattempted'
-                    } ${currentQuestionIndex === index ? 'ring-2 ring-offset-2' : ''}`}
+                    className={`h-8 w-8 rounded flex items-center justify-center text-sm ${
+                      isQuestionAttempted(index) 
+                        ? 'bg-blue-500 text-white' 
+                        : 'bg-gray-100 text-gray-700'
+                    } ${currentQuestionIndex === index ? 'ring-2 ring-offset-2 ring-blue-500' : ''}`}
                   >
                     {index + 1}
                   </button>
@@ -199,14 +214,21 @@ const QuizInterface = () => {
               </div>
               <div className="mt-4 text-sm">
                 <div className="flex items-center mb-1">
-                  <div className="w-4 h-4 bg-quiz-attempted rounded-full mr-2"></div>
+                  <div className="w-4 h-4 bg-blue-500 rounded-full mr-2"></div>
                   Attempted
                 </div>
                 <div className="flex items-center">
-                  <div className="w-4 h-4 bg-quiz-unattempted rounded-full mr-2"></div>
+                  <div className="w-4 h-4 bg-gray-100 rounded-full mr-2"></div>
                   Unattempted
                 </div>
               </div>
+              
+              <Button 
+                onClick={handleSubmitClick} 
+                className="w-full mt-4 bg-green-500 hover:bg-green-600"
+              >
+                Submit Quiz
+              </Button>
             </CardContent>
           </Card>
         </div>
@@ -218,13 +240,14 @@ const QuizInterface = () => {
             <AlertDialogTitle>Submit Quiz?</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to submit your answers? You won't be able to change them after submission.
+              <p className="mt-2">Your results will be available after the teacher has published them.</p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleSubmit} className="bg-quiz-primary">
               Yes, Submit
             </AlertDialogAction>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
