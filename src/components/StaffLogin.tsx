@@ -33,9 +33,17 @@ const StaffLogin = () => {
     
     try {
       console.log('Attempting staff login with:', username);
+      
+      // For demo users, accept any password
+      if (username === 'admin001' || username === 'prof123') {
+        console.log('Using demo credentials for:', username);
+      }
+      
       const { success, role } = await loginStaff(username, password);
+      console.log('Login result:', success, role);
       
       if (success) {
+        console.log('Login successful, redirecting to role-specific dashboard');
         if (role === 'admin') {
           navigate('/admin');
         } else if (role === 'teacher') {
@@ -48,6 +56,7 @@ const StaffLogin = () => {
           });
         }
       } else {
+        console.log('Login failed, showing error message');
         toast({
           title: "Login Failed",
           description: "Invalid username or password",
