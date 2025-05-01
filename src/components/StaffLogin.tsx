@@ -32,15 +32,16 @@ const StaffLogin = () => {
     setIsSubmitting(true);
     
     try {
-      console.log('Attempting staff login with:', username);
+      console.log('Attempting staff login with:', username, 'password length:', password.length);
       
-      // For demo users, accept any password
+      // For demo users, log more information
       if (username === 'admin001' || username === 'prof123') {
-        console.log('Using demo credentials for:', username);
+        console.log('Using demo account for staff:', username);
+        console.log('This is a test account, should auto-create if needed');
       }
       
       const { success, role } = await loginStaff(username, password);
-      console.log('Login result:', success, role);
+      console.log('Login result:', success, 'role:', role);
       
       if (success) {
         console.log('Login successful, redirecting to role-specific dashboard');
@@ -59,7 +60,7 @@ const StaffLogin = () => {
         console.log('Login failed, showing error message');
         toast({
           title: "Login Failed",
-          description: "Invalid username or password",
+          description: "Invalid username or password. For demo, use admin001 or prof123 with any password.",
           variant: "destructive",
         });
       }
