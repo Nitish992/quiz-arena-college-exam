@@ -13,7 +13,7 @@ const Login = () => {
   const [dob, setDob] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { login } = useAuth();
+  const { loginStudent, loginStaff } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -32,23 +32,37 @@ const Login = () => {
     setIsSubmitting(true);
     
     try {
-      const success = await login(rollNumber, dob);
-      
-      if (success) {
-        // Determine route based on roll number format
-        if (rollNumber.toLowerCase() === 'admin001') {
-          navigate('/admin');
-        } else if (rollNumber.toLowerCase() === 'prof123') {
-          navigate('/teacher');
+      // Determine if this is a staff or student login based on the roll number format
+      if (rollNumber.toLowerCase() === 'admin001' || rollNumber.toLowerCase() === 'prof123') {
+        // For staff login (using password as dob for simplicity)
+        const { success, role } = await loginStaff(rollNumber, dob);
+        
+        if (success) {
+          if (role === 'admin') {
+            navigate('/admin');
+          } else if (role === 'teacher') {
+            navigate('/teacher');
+          }
         } else {
-          navigate('/student');
+          toast({
+            title: "Login Failed",
+            description: "Invalid credentials",
+            variant: "destructive",
+          });
         }
       } else {
-        toast({
-          title: "Login Failed",
-          description: "Invalid roll number or date of birth",
-          variant: "destructive",
-        });
+        // For student login
+        const success = await loginStudent(rollNumber, dob);
+        
+        if (success) {
+          navigate('/student');
+        } else {
+          toast({
+            title: "Login Failed",
+            description: "Invalid roll number or date of birth",
+            variant: "destructive",
+          });
+        }
       }
     } catch (error) {
       toast({
