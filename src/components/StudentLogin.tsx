@@ -32,18 +32,37 @@ const StudentLogin = () => {
     setIsSubmitting(true);
     
     try {
-      const success = await loginStudent(rollNumber, dob);
-      
-      if (success) {
-        navigate('/student');
+      // For demo purposes, accept any date for CS23A001-CS23A005
+      if (rollNumber.startsWith('CS23A') && parseInt(rollNumber.slice(4)) <= 5) {
+        console.log('Using demo account for:', rollNumber);
+        // Demo account login
+        const success = await loginStudent(rollNumber, dob);
+        
+        if (success) {
+          navigate('/student');
+        } else {
+          toast({
+            title: "Login Failed",
+            description: "Failed to create demo account. Please try again.",
+            variant: "destructive",
+          });
+        }
       } else {
-        toast({
-          title: "Login Failed",
-          description: "Invalid roll number or date of birth",
-          variant: "destructive",
-        });
+        // Regular student login
+        const success = await loginStudent(rollNumber, dob);
+        
+        if (success) {
+          navigate('/student');
+        } else {
+          toast({
+            title: "Login Failed",
+            description: "Invalid roll number or date of birth",
+            variant: "destructive",
+          });
+        }
       }
     } catch (error) {
+      console.error('Login error:', error);
       toast({
         title: "Error",
         description: "An unexpected error occurred. Please try again.",

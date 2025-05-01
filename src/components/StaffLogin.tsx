@@ -32,6 +32,7 @@ const StaffLogin = () => {
     setIsSubmitting(true);
     
     try {
+      console.log('Attempting staff login with:', username);
       const { success, role } = await loginStaff(username, password);
       
       if (success) {
@@ -54,6 +55,7 @@ const StaffLogin = () => {
         });
       }
     } catch (error) {
+      console.error('Staff login error:', error);
       toast({
         title: "Error",
         description: "An unexpected error occurred. Please try again.",
