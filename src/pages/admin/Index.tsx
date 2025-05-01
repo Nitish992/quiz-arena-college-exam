@@ -1,10 +1,16 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import UserUpload from '@/components/admin/UserUpload';
 import BatchUpdate from '@/components/admin/BatchUpdate';
+import TeacherManagement from '@/components/admin/TeacherManagement';
 
 const AdminDashboard = () => {
   const { profile, logout } = useAuth();
@@ -32,6 +38,7 @@ const AdminDashboard = () => {
             <div className="flex justify-between items-center mb-6">
               <TabsList>
                 <TabsTrigger value="users" className="px-4">User Management</TabsTrigger>
+                <TabsTrigger value="teachers" className="px-4">Teacher Accounts</TabsTrigger>
                 <TabsTrigger value="batches" className="px-4">Batch Management</TabsTrigger>
               </TabsList>
             </div>
@@ -42,6 +49,14 @@ const AdminDashboard = () => {
               </div>
               
               <UserUpload />
+            </TabsContent>
+            
+            <TabsContent value="teachers" className="space-y-6">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold">Teacher Account Management</h2>
+              </div>
+              
+              <TeacherManagement />
             </TabsContent>
             
             <TabsContent value="batches" className="space-y-6">

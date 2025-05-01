@@ -157,6 +157,7 @@ export type Database = {
         Row: {
           batch: string | null
           created_at: string
+          dob: string | null
           id: string
           name: string
           role: string
@@ -167,6 +168,7 @@ export type Database = {
         Insert: {
           batch?: string | null
           created_at?: string
+          dob?: string | null
           id: string
           name: string
           role: string
@@ -177,6 +179,7 @@ export type Database = {
         Update: {
           batch?: string | null
           created_at?: string
+          dob?: string | null
           id?: string
           name?: string
           role?: string
@@ -414,6 +417,30 @@ export type Database = {
         }
         Relationships: []
       }
+      staff_credentials: {
+        Row: {
+          created_at: string
+          id: string
+          password_hash: string
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          password_hash: string
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          password_hash?: string
+          updated_at?: string
+          username?: string
+        }
+        Relationships: []
+      }
       subjects: {
         Row: {
           created_at: string
@@ -443,7 +470,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      update_teacher_password: {
+        Args: { new_password: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

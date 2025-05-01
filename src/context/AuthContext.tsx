@@ -12,12 +12,14 @@ type ProfileType = {
   roll_number?: string;
   semester?: string;
   batch?: string;
+  dob?: string;
 };
 
 interface AuthContextType {
   user: User | null;
   profile: ProfileType | null;
-  login: (roll_number: string, dob: string) => Promise<boolean>;
+  loginStudent: (roll_number: string, dob: string) => Promise<boolean>;
+  loginStaff: (username: string, password: string) => Promise<{success: boolean, role?: string}>;
   logout: () => void;
   isLoading: boolean;
 }
@@ -88,14 +90,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
-  const login = async (roll_number: string, dob: string): Promise<boolean> => {
+  // Student login (roll number + DOB)
+  const loginStudent = async (roll_number: string, dob: string): Promise<boolean> => {
     setIsLoading(true);
     
     try {
-      // First check if the roll number exists in our system
+      // Check if the roll number exists in our system
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('id')
+        .select('id, role')
         .eq('roll_number', roll_number)
         .maybeSingle();
       
@@ -110,61 +113,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
       
-      // For simplicity in this demo, we'll use roll_number@example.com as the email
-      // In a real system, you would have a proper mapping between roll numbers and email addresses
-      const email = `${roll_number.toLowerCase()}@example.com`;
-      const password = dob.replace(/-/g, '') + roll_number; // Simple password generation
-      
-      // If profile doesn't exist but it's one of our demo accounts, create it
-      if (!profileData && (roll_number === 'prof123' || roll_number === 'admin001' || roll_number.startsWith('CS23A'))) {
-        const { error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              name: roll_number === 'prof123' ? 'Professor Smith' : roll_number === 'admin001' ? 'Admin User' : `Student ${roll_number}`,
-              role: roll_number === 'prof123' ? 'teacher' : roll_number === 'admin001' ? 'admin' : 'student',
-              roll_number: roll_number,
-              semester: roll_number === 'prof123' || roll_number === 'admin001' ? null : '6th',
-              batch: roll_number === 'prof123' || roll_number === 'admin001' ? null : '2023-26'
-            }
-          }
-        });
-        
-        if (signUpError) {
-          console.error('Error signing up:', signUpError);
-          // If user already exists, try to sign in
-          if (signUpError.message.includes('User already registered')) {
-            return attemptSignIn(email, password);
-          }
+      // If profile doesn't exist or is not a student
+      if (!profileData || profileData.role !== 'student') {
+        // For demo purposes, create a student account if roll number starts with CS23A
+        if (roll_number.startsWith('CS23A')) {
+          const email = `${roll_number.toLowerCase()}@example.com`;
+          const password = dob.replace(/-/g, '') + roll_number; // Simple password generation
           
-          toast({
-            title: "Registration Error",
-            description: signUpError.message,
-            variant: "destructive",
-          });
-          setIsLoading(false);
-          return false;
+          // Try to create account
+          return await createStudentAccount(roll_number, dob, email, password);
         }
         
         toast({
-          title: "Account Created",
-          description: "Your account has been created. Please log in.",
-        });
-        
-        return attemptSignIn(email, password);
-      } else if (profileData) {
-        // If profile exists, attempt sign in
-        return attemptSignIn(email, password);
-      } else {
-        toast({
-          title: "Invalid Credentials",
-          description: "The provided roll number was not found.",
+          title: "Access Denied",
+          description: "Invalid student credentials.",
           variant: "destructive",
         });
         setIsLoading(false);
         return false;
       }
+      
+      // If profile exists, attempt sign in
+      const email = `${roll_number.toLowerCase()}@example.com`;
+      const password = dob.replace(/-/g, '') + roll_number; // Simple password generation
+      
+      return await signInWithEmailPassword(email, password);
     } catch (error: any) {
       console.error('Login error:', error);
       toast({
@@ -177,7 +150,160 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
   
-  const attemptSignIn = async (email: string, password: string): Promise<boolean> => {
+  // Staff login (username + password)
+  const loginStaff = async (username: string, password: string): Promise<{success: boolean, role?: string}> => {
+    setIsLoading(true);
+    
+    try {
+      // For demo simplicity
+      if (username === 'admin001' || username === 'prof123') {
+        const email = `${username.toLowerCase()}@example.com`;
+        const role = username === 'admin001' ? 'admin' : 'teacher';
+        
+        // Try to create demo account if it doesn't exist
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('roll_number', username)
+          .maybeSingle();
+        
+        if (!profileData) {
+          // Create demo account
+          const { error: signUpError } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: {
+                name: username === 'admin001' ? 'Admin User' : 'Professor Smith',
+                role,
+                roll_number: username,
+                username
+              }
+            }
+          });
+          
+          if (signUpError) {
+            if (!signUpError.message.includes('User already registered')) {
+              console.error('Error creating demo account:', signUpError);
+              toast({
+                title: "Account Error",
+                description: signUpError.message,
+                variant: "destructive",
+              });
+              setIsLoading(false);
+              return { success: false };
+            }
+          }
+        }
+        
+        // Sign in
+        const signInSuccess = await signInWithEmailPassword(email, password);
+        setIsLoading(false);
+        return { success: signInSuccess, role };
+      }
+      
+      // For regular staff
+      const { data: userData, error: userError } = await supabase
+        .from('staff_credentials')
+        .select(`
+          id,
+          username,
+          profiles:id (
+            role
+          )
+        `)
+        .eq('username', username)
+        .single();
+      
+      if (userError || !userData) {
+        toast({
+          title: "Login Failed",
+          description: "Invalid username or password",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return { success: false };
+      }
+      
+      // Get email from user_id
+      const { data: authData } = await supabase.auth.admin.getUserById(userData.id);
+      
+      if (!authData?.user?.email) {
+        toast({
+          title: "Login Failed",
+          description: "User account not configured correctly",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return { success: false };
+      }
+      
+      // Sign in with email and password
+      const signInSuccess = await signInWithEmailPassword(authData.user.email, password);
+      
+      if (!signInSuccess) {
+        setIsLoading(false);
+        return { success: false };
+      }
+      
+      const role = (userData.profiles as any).role;
+      setIsLoading(false);
+      return { success: true, role };
+      
+    } catch (error: any) {
+      console.error('Staff login error:', error);
+      toast({
+        title: "Login Failed",
+        description: error.message || "An unexpected error occurred.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+      return { success: false };
+    }
+  };
+  
+  // Helper function to create a student account
+  const createStudentAccount = async (roll_number: string, dob: string, email: string, password: string): Promise<boolean> => {
+    const { error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          name: `Student ${roll_number}`,
+          role: 'student',
+          roll_number: roll_number,
+          semester: '6th',
+          batch: '2023-26',
+          dob: dob
+        }
+      }
+    });
+    
+    if (signUpError) {
+      // If user already exists, try to sign in
+      if (signUpError.message.includes('User already registered')) {
+        return await signInWithEmailPassword(email, password);
+      }
+      
+      toast({
+        title: "Registration Error",
+        description: signUpError.message,
+        variant: "destructive",
+      });
+      setIsLoading(false);
+      return false;
+    }
+    
+    toast({
+      title: "Account Created",
+      description: "Your account has been created. Please log in.",
+    });
+    
+    return await signInWithEmailPassword(email, password);
+  };
+  
+  // Helper function to sign in with email and password
+  const signInWithEmailPassword = async (email: string, password: string): Promise<boolean> => {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -219,7 +345,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, profile, loginStudent, loginStaff, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
