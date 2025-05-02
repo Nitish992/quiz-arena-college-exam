@@ -33,18 +33,9 @@ const StudentLogin = () => {
     console.log('Attempting student login with:', rollNumber, 'DOB format:', dob);
     
     try {
-      // Demo account checks and info logging
-      if (rollNumber.match(/^CS23A00[1-5]$/)) {
-        console.log('Using demo account for student:', rollNumber);
-        console.log('Demo DOB provided:', dob);
-        console.log('This is a test account, should auto-create if needed');
-      } else {
-        console.log('Using regular account login flow for:', rollNumber);
-      }
-      
-      // Attempt login
+      // Attempt login using the AuthContext's loginStudent function
+      // This function now uses our abstracted services underneath
       const success = await loginStudent(rollNumber, dob);
-      console.log('Login result:', success);
       
       if (success) {
         console.log('Login successful, redirecting to student dashboard');
@@ -57,11 +48,11 @@ const StudentLogin = () => {
           variant: "destructive",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
       toast({
         title: "Error",
-        description: "An unexpected error occurred. Please try again.",
+        description: error.message || "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {
