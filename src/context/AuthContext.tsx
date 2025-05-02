@@ -101,147 +101,127 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     try {
       console.log('Student login attempt:', roll_number);
-      // For demo - if this is a test account in the range CS23A001-CS23A005, create it on-the-fly
-      if (roll_number.startsWith('CS23A') && parseInt(roll_number.slice(4)) <= 5) {
+      
+      // Check if this is a demo account in the range CS23A001-CS23A005
+      if (roll_number.match(/^CS23A00[1-5]$/)) {
         // Generate email from roll number
         const email = `${roll_number.toLowerCase()}@example.com`;
         const password = dob.replace(/-/g, '') + roll_number; // Simple password generation
         
-        console.log('Demo student account - email:', email);
+        console.log('Demo student account - email:', email, 'password (hashed):', '*'.repeat(password.length));
         
-        // Check if account exists first
-        try {
-          console.log('Checking if demo student account already exists');
-          const { data: existingUser, error: signInError } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
-          
-          if (!signInError && existingUser.user) {
-            console.log('Demo student account exists, signing in');
-            // User already exists, set profile and return success
-            const userProfile = await fetchProfile(existingUser.user.id);
-            setProfile(userProfile);
-            setIsLoading(false);
-            return true;
-          } else {
-            console.log('Demo student account does not exist or sign-in failed:', signInError?.message);
-          }
-        } catch (signInErr) {
-          console.error('Error checking existing account:', signInErr);
-        }
+        // Try to sign in first to see if account exists
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
         
-        // Try to create demo account
-        console.log('Creating new demo student account');
-        try {
-          const { data, error: signUpError } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-              data: {
-                name: `Student ${roll_number}`,
-                role: 'student',
-                roll_number: roll_number,
-                semester: '6th',
-                batch: '2023-26',
-                dob: dob
-              }
-            }
-          });
-          
-          if (signUpError) {
-            console.error('Error creating student account:', signUpError);
-            toast({
-              title: "Registration Error",
-              description: signUpError.message,
-              variant: "destructive",
-            });
-            setIsLoading(false);
-            return false;
-          }
-          
-          if (data.user) {
-            // Sign in immediately
-            console.log('Demo account created, signing in');
-            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-              email,
-              password,
-            });
-            
-            if (signInError) {
-              console.error('Sign in error after creation:', signInError);
-              toast({
-                title: "Login Failed",
-                description: signInError.message,
-                variant: "destructive",
-              });
-              setIsLoading(false);
-              return false;
-            }
-            
-            // Set profile data and return success
-            console.log('Demo student login successful');
-            const userProfile = await fetchProfile(signInData.user.id);
-            setProfile(userProfile);
-            setIsLoading(false);
-            return true;
-          }
-        } catch (err) {
-          console.error('Error in student account creation:', err);
-        }
-      } else {
-        // Regular login - check if roll number exists in profiles
-        console.log('Regular student login with roll number:', roll_number);
-        try {
-          const { data: profileData, error: profileError } = await supabase
-            .from('profiles')
-            .select('id')
-            .eq('roll_number', roll_number)
-            .single();
-            
-          if (profileError || !profileData) {
-            console.error('Student not found:', profileError?.message);
-            toast({
-              title: "Login Failed",
-              description: "Student with this roll number not found",
-              variant: "destructive",
-            });
-            setIsLoading(false);
-            return false;
-          }
-          
-          // Get user email from auth (assuming convention: rollnumber@example.com)
-          const email = `${roll_number.toLowerCase()}@example.com`;
-          const password = dob.replace(/-/g, '') + roll_number; // Simple password generation
-          
-          console.log('Student found, attempting login with generated credentials');
-          
-          // Try to sign in
-          const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
-          
-          if (error) {
-            console.error('Student login error:', error);
-            toast({
-              title: "Login Failed",
-              description: error.message,
-              variant: "destructive",
-            });
-            setIsLoading(false);
-            return false;
-          }
-          
-          // Set profile and return success
-          console.log('Student login successful');
-          const userProfile = await fetchProfile(data.user.id);
+        // If successful sign in, set user and profile
+        if (!signInError && signInData.user) {
+          console.log('Demo student account exists, signed in successfully');
+          const userProfile = await fetchProfile(signInData.user.id);
           setProfile(userProfile);
           setIsLoading(false);
           return true;
-        } catch (err) {
-          console.error('Error in regular student login flow:', err);
         }
+        
+        // If sign in failed, try to create the account
+        console.log('Demo account sign-in failed, creating new account:', signInError?.message);
+        
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              name: `Student ${roll_number}`,
+              role: 'student',
+              roll_number: roll_number,
+              semester: '6th',
+              batch: '2023-26',
+              dob: dob
+            }
+          }
+        });
+        
+        if (signUpError) {
+          console.error('Error creating student account:', signUpError);
+          toast({
+            title: "Registration Error",
+            description: signUpError.message,
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return false;
+        }
+        
+        if (signUpData.user) {
+          // Sign in again after creation
+          console.log('Demo account created, signing in again');
+          const { data: finalSignInData, error: finalSignInError } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+          
+          if (finalSignInError) {
+            console.error('Sign in error after creation:', finalSignInError);
+            setIsLoading(false);
+            return false;
+          }
+          
+          console.log('Demo student login successful');
+          const userProfile = await fetchProfile(finalSignInData.user.id);
+          setProfile(userProfile);
+          setIsLoading(false);
+          return true;
+        }
+        
+        console.warn('Failed to create or sign in demo student account');
+        setIsLoading(false);
+        return false;
+      } else {
+        // Regular login - check if roll number exists in profiles
+        console.log('Regular student login with roll number:', roll_number);
+        
+        // Try to find student by roll number
+        const { data: profileMatches, error: profileError } = await supabase
+          .from('profiles')
+          .select('id, roll_number')
+          .eq('roll_number', roll_number);
+            
+        if (profileError || !profileMatches || profileMatches.length === 0) {
+          console.error('Student not found:', profileError?.message || 'No matching records');
+          setIsLoading(false);
+          return false;
+        }
+        
+        // Get the first matching profile
+        const studentProfile = profileMatches[0];
+        console.log('Found student profile:', studentProfile);
+        
+        // Get user email from auth (assuming convention: rollnumber@example.com)
+        const email = `${roll_number.toLowerCase()}@example.com`;
+        const password = dob.replace(/-/g, '') + roll_number; // Simple password generation
+        
+        console.log('Student found, attempting login with generated credentials');
+        
+        // Try to sign in
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        
+        if (error) {
+          console.error('Student login error:', error);
+          setIsLoading(false);
+          return false;
+        }
+        
+        // Set profile and return success
+        console.log('Student login successful');
+        const userProfile = await fetchProfile(data.user.id);
+        setProfile(userProfile);
+        setIsLoading(false);
+        return true;
       }
     } catch (error: any) {
       console.error('Login error:', error);

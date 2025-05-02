@@ -33,11 +33,13 @@ const StudentLogin = () => {
     console.log('Attempting student login with:', rollNumber, 'DOB format:', dob);
     
     try {
-      // For demo accounts, log more information
-      if (rollNumber.startsWith('CS23A') && parseInt(rollNumber.slice(4)) <= 5) {
+      // Demo account checks and info logging
+      if (rollNumber.match(/^CS23A00[1-5]$/)) {
         console.log('Using demo account for student:', rollNumber);
         console.log('Demo DOB provided:', dob);
         console.log('This is a test account, should auto-create if needed');
+      } else {
+        console.log('Using regular account login flow for:', rollNumber);
       }
       
       // Attempt login
@@ -51,7 +53,7 @@ const StudentLogin = () => {
         console.log('Login failed, showing error message');
         toast({
           title: "Login Failed",
-          description: "Invalid roll number or date of birth. For demo, use CS23A001-CS23A005 with any date.",
+          description: `Invalid roll number or date of birth. For demo, use roll numbers CS23A001-CS23A005 with any date.`,
           variant: "destructive",
         });
       }
