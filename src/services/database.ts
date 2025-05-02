@@ -1,6 +1,6 @@
 
-import { supabase } from '@/integrations/supabase/client';
 import { ProfileType } from '@/types/auth';
+import { users } from '@/lib/dummyData';
 
 // This service layer abstracts database operations
 // When migrating to MySQL, only this file would need to be changed
@@ -11,25 +11,33 @@ export interface DatabaseService {
   findProfileById: (userId: string) => Promise<ProfileType | null>;
 }
 
-// Implementation using Supabase - can be replaced with MySQL implementation later
+// Implementation using dummy data - can be replaced with MySQL implementation later
 export const databaseService: DatabaseService = {
   findStudentByRollNumber: async (rollNumber: string): Promise<ProfileType | null> => {
     console.log('Searching for student with roll number:', rollNumber);
     
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('roll_number', rollNumber)
-        .maybeSingle();
-        
-      if (error) {
-        console.error('Error finding student by roll number:', error);
+      // Find student in dummy data
+      const user = users.find(u => u.roll_number === rollNumber);
+      
+      if (!user) {
+        console.log('Student not found with roll number:', rollNumber);
         return null;
       }
       
-      console.log('Student search result:', data);
-      return data as ProfileType | null;
+      // Map dummy data user to ProfileType
+      const profile: ProfileType = {
+        id: user.id,
+        name: user.name,
+        role: user.role,
+        roll_number: user.roll_number,
+        semester: user.semester,
+        batch: user.batch,
+        dob: user.dob_hash
+      };
+      
+      console.log('Student found:', profile);
+      return profile;
     } catch (error) {
       console.error('Exception finding student:', error);
       return null;
@@ -40,31 +48,19 @@ export const databaseService: DatabaseService = {
     console.log('Creating new student profile:', profile);
     
     try {
-      // Get the user ID from auth
-      const { data: authData } = await supabase.auth.getUser();
-      if (!authData.user) {
-        console.error('No authenticated user to create profile for');
-        return null;
-      }
+      // Generate a simple ID (in production you'd use UUID)
+      const id = `u${users.length + 1}`;
       
-      const newProfile = {
-        id: authData.user.id,
+      // Create new profile
+      const newProfile: ProfileType = {
+        id,
         ...profile
       };
       
-      const { data, error } = await supabase
-        .from('profiles')
-        .insert([newProfile])
-        .select()
-        .single();
-        
-      if (error) {
-        console.error('Error creating student profile:', error);
-        return null;
-      }
-      
-      console.log('Created student profile:', data);
-      return data as ProfileType;
+      // In a real implementation, we would add this to the database
+      // For now we just log it since we're using static data
+      console.log('Created student profile:', newProfile);
+      return newProfile;
     } catch (error) {
       console.error('Exception creating student:', error);
       return null;
@@ -75,19 +71,27 @@ export const databaseService: DatabaseService = {
     console.log('Finding profile for user:', userId);
     
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-        
-      if (error) {
-        console.error('Error finding profile:', error);
+      // Find user in dummy data
+      const user = users.find(u => u.id === userId);
+      
+      if (!user) {
+        console.log('User not found with id:', userId);
         return null;
       }
       
-      console.log('Profile found:', data);
-      return data as ProfileType;
+      // Map dummy data user to ProfileType
+      const profile: ProfileType = {
+        id: user.id,
+        name: user.name,
+        role: user.role,
+        roll_number: user.roll_number,
+        semester: user.semester,
+        batch: user.batch,
+        dob: user.dob_hash
+      };
+      
+      console.log('Profile found:', profile);
+      return profile;
     } catch (error) {
       console.error('Exception finding profile:', error);
       return null;

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -34,7 +33,6 @@ const StudentLogin = () => {
     
     try {
       // Attempt login using the AuthContext's loginStudent function
-      // This function now uses our abstracted services underneath
       const success = await loginStudent(rollNumber, dob);
       
       if (success) {

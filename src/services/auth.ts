@@ -1,7 +1,7 @@
 
-import { supabase } from '@/integrations/supabase/client';
 import { databaseService } from './database';
 import { ProfileType } from '@/types/auth';
+import { users } from '@/lib/dummyData';
 
 // This service encapsulates authentication logic
 export interface AuthResult {
@@ -19,102 +19,114 @@ export const authService = {
     try {
       // Check if this is a demo account in the range CS23A001-CS23A005
       const isDemoAccount = rollNumber.match(/^CS23A00[1-5]$/);
-      const email = `${rollNumber.toLowerCase()}@example.com`;
-      const password = dob.replace(/-/g, '') + rollNumber; // Simple password generation
       
-      console.log('Attempting login with email:', email);
+      // Find the student profile
+      const profile = await databaseService.findStudentByRollNumber(rollNumber);
       
-      // Try to sign in first
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      
-      // If successful sign in
-      if (!signInError && signInData.user) {
-        console.log('Login successful, fetching profile');
-        
-        // Find the profile in the database
-        const profile = await databaseService.findProfileById(signInData.user.id);
+      // If student found and DOB matches or it's a demo account
+      if (profile && (profile.dob === dob || isDemoAccount)) {
+        console.log('Login successful');
         
         return { 
           success: true, 
-          user: signInData.user,
+          user: { id: profile.id }, // Simplified user object
           profile 
         };
       }
       
-      // If not a demo account and sign in failed, return error
+      // If not found or mismatch and not a demo account, return error
       if (!isDemoAccount) {
-        console.error('Login failed:', signInError?.message);
+        console.error('Login failed: Invalid roll number or DOB');
         return { 
           success: false, 
           error: 'Invalid roll number or DOB' 
         };
       }
       
-      // For demo accounts, try to create the account if login failed
-      console.log('Demo account sign-in failed, creating new account:', signInError?.message);
+      // For demo accounts, create a new profile
+      console.log('Demo account not found, creating new account');
       
-      // Create the auth user
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            name: `Student ${rollNumber}`,
-            role: 'student',
-            roll_number: rollNumber,
-            semester: '6th',
-            batch: '2023-26',
-            dob: dob
-          }
-        }
+      // Create new demo profile
+      const newProfile = await databaseService.createStudent({
+        name: `Student ${rollNumber}`,
+        role: 'student',
+        roll_number: rollNumber,
+        semester: '6th',
+        batch: '2023-26',
+        dob: dob
       });
       
-      if (signUpError) {
-        console.error('Error creating student account:', signUpError);
+      if (!newProfile) {
+        console.error('Error creating demo student account');
         return { 
           success: false, 
-          error: signUpError.message 
+          error: 'Failed to create demo account' 
         };
       }
       
-      if (signUpData.user) {
-        // Sign in again after creation
-        console.log('Demo account created, signing in again');
-        const { data: finalSignInData, error: finalSignInError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        
-        if (finalSignInError) {
-          console.error('Sign in error after creation:', finalSignInError);
-          return { 
-            success: false, 
-            error: finalSignInError.message 
-          };
-        }
-        
-        console.log('Demo student login successful');
-        const profile = await databaseService.findProfileById(finalSignInData.user.id);
-        
-        return { 
-          success: true, 
-          user: finalSignInData.user,
-          profile 
-        };
-      }
-      
+      console.log('Demo student login successful');
       return { 
-        success: false, 
-        error: 'Failed to create or sign in demo account' 
+        success: true, 
+        user: { id: newProfile.id },
+        profile: newProfile 
       };
     } catch (error: any) {
       console.error('Login exception:', error);
       return { 
         success: false, 
         error: error.message || 'An unexpected error occurred' 
+      };
+    }
+  },
+  
+  // Staff login function (not implemented in this example)
+  loginStaff: async (username: string, password: string): Promise<AuthResult> => {
+    console.log('Staff login attempt:', username);
+    
+    try {
+      // For demo users (admin001 and prof123)
+      if (username === 'admin001' || username === 'prof123') {
+        const role = username === 'admin001' ? 'admin' : 'teacher';
+        const demoUser = users.find(u => u.roll_number === username);
+        
+        if (demoUser) {
+          // Create profile from dummy data
+          const profile: ProfileType = {
+            id: demoUser.id,
+            name: demoUser.name,
+            role: demoUser.role, 
+            roll_number: demoUser.roll_number
+          };
+          
+          return {
+            success: true,
+            user: { id: demoUser.id },
+            profile: profile
+          };
+        }
+        
+        // Create a simple profile if not found in dummy data
+        return {
+          success: true,
+          user: { id: `staff_${Date.now()}` },
+          profile: {
+            id: `staff_${Date.now()}`,
+            name: username === 'admin001' ? 'Admin User' : 'Professor Smith',
+            role: role,
+            roll_number: username
+          }
+        };
+      }
+      
+      return {
+        success: false,
+        error: 'Invalid credentials'
+      };
+    } catch (error: any) {
+      console.error('Staff login exception:', error);
+      return {
+        success: false,
+        error: error.message || 'An unexpected error occurred'
       };
     }
   }
