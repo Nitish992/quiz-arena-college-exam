@@ -1,18 +1,18 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { Label } from '@/components/ui/label';
+import { authService } from '@/services/auth';
 
 const StudentLogin = () => {
   const [rollNumber, setRollNumber] = useState('');
   const [dob, setDob] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { loginStudent } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -32,17 +32,20 @@ const StudentLogin = () => {
     console.log('Attempting student login with:', rollNumber, 'DOB format:', dob);
     
     try {
-      // Attempt login using the AuthContext's loginStudent function
-      const success = await loginStudent(rollNumber, dob);
+      // Use our local auth service that only depends on dummy data
+      const result = await authService.loginStudent(rollNumber, dob);
       
-      if (success) {
+      if (result.success) {
         console.log('Login successful, redirecting to student dashboard');
+        // Store the user profile in localStorage for session management
+        localStorage.setItem('currentUser', JSON.stringify(result.profile));
+        localStorage.setItem('isAuthenticated', 'true');
         navigate('/student');
       } else {
         console.log('Login failed, showing error message');
         toast({
           title: "Login Failed",
-          description: `Invalid roll number or date of birth. For demo, use roll numbers CS23A001-CS23A005 with any date.`,
+          description: result.error || `Invalid roll number or date of birth. For demo, use roll numbers CS23A001-CS23A005 with any date.`,
           variant: "destructive",
         });
       }

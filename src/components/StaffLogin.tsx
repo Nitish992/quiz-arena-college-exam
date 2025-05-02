@@ -32,12 +32,11 @@ const StaffLogin = () => {
     setIsSubmitting(true);
     
     try {
-      console.log('Attempting staff login with:', username, 'password length:', password.length);
+      console.log('Attempting staff login with:', username);
       
       // For demo users, log more information
       if (username === 'admin001' || username === 'prof123') {
         console.log('Using demo account for staff:', username);
-        console.log('This is a test account, should auto-create if needed');
       }
       
       const { success, role } = await loginStaff(username, password);
